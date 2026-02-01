@@ -1,11 +1,480 @@
 ---
-import Welcome from '../components/Welcome.astro';
-import Layout from '../layouts/Layout.astro';
-
-// Welcome to Astro! Wondering what to do next? Check out the Astro documentation at https://docs.astro.build
-// Don't want to use any of this? Delete everything in this file, the `assets`, `components`, and `layouts` directories, and start fresh.
+const title = "Valentine";
 ---
 
-<Layout>
-	<Welcome />
-</Layout>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <style>
+      :root {
+        --bg: #0b0b10;
+        --card: rgba(255,255,255,0.06);
+        --text: rgba(255,255,255,0.92);
+        --muted: rgba(255,255,255,0.70);
+        --yes: #ff4d7d;
+        --no: #6b7280;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(1200px 800px at 50% 30%, rgba(255,77,125,0.18), transparent 60%),
+                    var(--bg);
+        color: var(--text);
+        font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+        overflow: hidden; /* évite une éventuelle scroll-bar si NO part aux limites */
+      }
+
+      .card {
+        width: min(720px, 92vw);
+        background: var(--card);
+        border: 1px solid rgba(255,255,255,0.10);
+        border-radius: 18px;
+        padding: 18px;
+        box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+        backdrop-filter: blur(10px);
+        position: relative;
+        z-index: 2;
+      }
+
+      img.hero {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 14px;
+        border: 1px solid rgba(255,255,255,0.10);
+      }
+
+      h1 {
+        margin: 16px 8px 8px;
+        font-size: clamp(28px, 4vw, 40px);
+        letter-spacing: 0.4px;
+        text-align: center;
+      }
+
+      p.sub {
+        margin: 0 8px 14px;
+        color: var(--muted);
+        text-align: center;
+      }
+
+      .arena {
+        position: relative;
+        margin: 10px auto 6px;
+        width: min(520px, 92%);
+        height: 90px;
+        border-radius: 14px;
+        border: 1px dashed rgba(255,255,255,0.18);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .buttons {
+        position: relative;
+        width: 100%;
+        height: 100%;
+        display: grid;
+        place-items: center;
+      }
+
+      button {
+        border: 0;
+        border-radius: 999px;
+        padding: 14px 20px;
+        font-weight: 700;
+        cursor: pointer;
+        transition: transform 120ms ease, filter 120ms ease;
+        user-select: none;
+      }
+
+      button:active { transform: scale(0.98); }
+
+      /* YES dans l'arène */
+      #yesBtn {
+        position: absolute;
+        left: 35%;
+        top: 52%;
+        transform: translate(-50%, -50%);
+        background: var(--yes);
+        color: white;
+        min-width: 130px;
+        z-index: 3;
+      }
+
+      #yesBtn:hover { filter: brightness(1.08); }
+
+      /* NO devient "libre" sur la page */
+      #noBtn {
+        position: fixed; /* ✅ key change */
+        background: var(--no);
+        color: white;
+        min-width: 130px;
+        left: 65%;
+        top: 52%;
+        transform: translate(-50%, -50%);
+        z-index: 4; /* au-dessus de la carte */
+        will-change: left, top;
+        opacity: 0;
+        transition: opacity 180ms ease;
+      }
+
+      /* Gros bouton OUI qui peut remplacer NO */
+      #megaYesBtn {
+        position: fixed;
+        left: 50%;
+        top: 58%;
+        transform: translate(-50%, -50%);
+        background: var(--yes);
+        color: white;
+        font-size: 22px;
+        padding: 18px 28px;
+        border-radius: 999px;
+        min-width: 240px;
+        z-index: 5;
+        display: none;
+        box-shadow: 0 18px 60px rgba(0,0,0,0.55);
+      }
+
+      #megaYesBtn:hover { filter: brightness(1.08); }
+
+      .toast {
+        margin: 10px 8px 0;
+        text-align: center;
+        min-height: 22px;
+        color: rgba(255,255,255,0.86);
+      }
+
+      .hint {
+        margin: 8px 8px 0;
+        text-align: center;
+        color: rgba(255,255,255,0.55);
+        font-size: 13px;
+      }
+
+      .confetti {
+        position: fixed;
+        left: 50%;
+        top: 50%;
+        width: 1px;
+        height: 1px;
+        pointer-events: none;
+        z-index: 6;
+      }
+
+      .confetti-piece {
+        position: absolute;
+        width: 8px;
+        height: 12px;
+        border-radius: 2px;
+        animation: confetti-fall 900ms ease-out forwards;
+        opacity: 0.95;
+      }
+
+      @keyframes confetti-fall {
+        0%   { transform: translate3d(0, 0, 0) rotate(0deg); opacity: 1; }
+        70%  { opacity: 1; }
+        100% { transform: translate3d(var(--tx), var(--ty), 0) rotate(var(--rot)); opacity: 0; }
+      }
+
+      @keyframes yes-pop {
+        0%   { transform: translate(-50%, -50%) scale(1); }
+        40%  { transform: translate(-50%, -50%) scale(1.08); }
+        100% { transform: translate(-50%, -50%) scale(1); }
+      }
+    </style>
+  </head>
+
+  <body>
+    <main class="card">
+      <img class="hero" src="/valentineAsking.png" alt="Valentine image" />
+
+      <h1>will you be my valentine ?</h1>
+      <p class="sub">Choisis bien ! 😇</p>
+
+      <section class="arena" id="arena">
+        <div class="buttons">
+          <button id="yesBtn" type="button">Oui 💘</button>
+          <button id="noBtn" type="button" aria-label="No (good luck)">Non 🙃</button>
+        </div>
+      </section>
+
+      <div class="toast" id="toast"></div>
+      <div class="hint">Astuce: Essaye de cliquer sur “Non” pour voir.</div>
+    </main>
+
+    <!-- Gros OUI caché au départ -->
+    <button id="megaYesBtn" type="button">OUI 💘 (ok j’ai compris)</button>
+
+    <script>
+  const yesBtn = document.getElementById("yesBtn");
+  const noBtn = document.getElementById("noBtn");
+  const toast = document.getElementById("toast");
+  const megaYesBtn = document.getElementById("megaYesBtn");
+
+  if (!noBtn || !yesBtn || !toast || !megaYesBtn) {
+    throw new Error("Required elements not found in the DOM");
+  }
+
+  // --------- YES behavior ----------
+  function celebrateYes(message = "YEEEEES 💖💖💖") {
+    toast.textContent = message;
+    document.body.animate(
+      [{ filter: "brightness(1)" }, { filter: "brightness(1.25)" }, { filter: "brightness(1)" }],
+      { duration: 700, iterations: 1 }
+    );
+
+    // Petit boost visuel sur le bouton
+    yesBtn.style.animation = "yes-pop 420ms ease";
+    yesBtn.addEventListener("animationend", () => {
+      yesBtn.style.animation = "";
+    }, { once: true });
+
+    // Confetti léger
+    burstConfetti();
+  }
+
+  yesBtn.addEventListener("click", () => celebrateYes());
+  megaYesBtn.addEventListener("click", () => celebrateYes("BON… OUI 😭💖"));
+
+  // --------- NO behavior ----------
+  const state = {
+    mx: window.innerWidth / 2,
+    my: window.innerHeight / 2,
+    hasPointer: false,
+    x: 0, y: 0,
+    vx: 0, vy: 0,
+    raf: 0,
+    armed: true,
+  };
+
+  function clamp(v, min, max) {
+    return Math.max(min, Math.min(max, v));
+  }
+
+  function rectsOverlap(a, b) {
+    return !(a.right <= b.left || a.left >= b.right || a.bottom <= b.top || a.top >= b.bottom);
+  }
+
+  function setNoPos(x, y) {
+    noBtn.style.left = x + "px";
+    noBtn.style.top = y + "px";
+    noBtn.style.transform = "translate(-50%, -50%)";
+  }
+
+  // ✅ place NO next to YES (initial)
+  function placeNoNextToYes() {
+    const yb = yesBtn.getBoundingClientRect();
+    const nb = noBtn.getBoundingClientRect();
+
+    const gap = 26; // espace entre les deux
+    const targetX = yb.right + gap + nb.width / 2;
+    const targetY = yb.top + yb.height / 2;
+
+    // clamp dans le viewport
+    const minX = nb.width / 2 + 10;
+    const maxX = window.innerWidth - nb.width / 2 - 10;
+    const minY = nb.height / 2 + 10;
+    const maxY = window.innerHeight - nb.height / 2 - 10;
+
+    state.x = clamp(targetX, minX, maxX);
+    state.y = clamp(targetY, minY, maxY);
+
+    // reset vitesse pour éviter un départ “bizarre”
+    state.vx = 0;
+    state.vy = 0;
+
+    setNoPos(state.x, state.y);
+  }
+
+  // "Glisse" sur OUI: autorise l'overlap mais empêche l'arrêt total
+  function nudgeNoIfStuckOnYes() {
+    const nb = noBtn.getBoundingClientRect();
+    const yb = yesBtn.getBoundingClientRect();
+    if (!rectsOverlap(nb, yb)) return;
+
+    const speed = Math.hypot(state.vx, state.vy);
+    if (speed > 6) return;
+    dashAwayFromPointer(12);
+  }
+
+  // Si NO est cliqué -> gros OUI
+  function replaceNoWithMegaYes() {
+    if (!state.armed) return;
+    state.armed = false;
+
+    noBtn.style.display = "none";
+    megaYesBtn.style.display = "block";
+    megaYesBtn.focus({ preventScroll: true });
+  }
+
+  noBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    replaceNoWithMegaYes();
+  });
+
+  // ✅ dash violent quand on approche vraiment le bouton (ça évite le “clic chanceux”)
+  function dashAwayFromPointer(boost = 24) {
+    const dx = state.x - state.mx;
+    const dy = state.y - state.my;
+    const dist = Math.hypot(dx, dy) || 0.0001;
+    const nx = dx / dist;
+    const ny = dy / dist;
+    state.vx += nx * boost;
+    state.vy += ny * boost;
+  }
+
+  noBtn.addEventListener("pointerenter", () => dashAwayFromPointer(28));
+  noBtn.addEventListener("pointerdown", () => dashAwayFromPointer(36));
+  noBtn.addEventListener("focus", () => {
+    dashAwayFromPointer(55);
+    yesBtn.focus({ preventScroll: true });
+  });
+
+  // Pointeur global (toute la page)
+  function updatePointer(e) {
+    state.mx = e.clientX;
+    state.my = e.clientY;
+    state.hasPointer = true;
+  }
+
+  window.addEventListener("pointermove", updatePointer);
+  window.addEventListener("mousemove", updatePointer); // fallback
+
+  window.addEventListener("pointerleave", () => {
+    // on garde les dernières coords mais on n’arrête pas le moteur
+    state.hasPointer = false;
+  });
+
+  function tick() {
+    if (!state.armed) return;
+
+    const nb = noBtn.getBoundingClientRect();
+    const halfW = nb.width / 2;
+    const halfH = nb.height / 2;
+
+    const edgePad = 2;
+    const minX = halfW + edgePad;
+    const maxX = window.innerWidth - halfW - edgePad;
+    const minY = halfH + edgePad;
+    const maxY = window.innerHeight - halfH - edgePad;
+
+    if (!state.hasPointer) {
+      state.raf = requestAnimationFrame(tick);
+      return;
+    }
+
+    // Params + agressifs (fuite immédiate)
+    const repelRadius = 260;
+    const maxAccel = 2.4;
+    const friction = 0.94;
+    const maxSpeed = 28;
+
+    let ax = 0;
+    let ay = 0;
+
+    const dx = state.x - state.mx;
+    const dy = state.y - state.my;
+    const dist = Math.hypot(dx, dy) || 0.0001;
+
+    if (dist < repelRadius) {
+      const t = 1 - dist / repelRadius;
+      const nx = dx / dist;
+      const ny = dy / dist;
+
+      const strength = (t * t) * maxAccel + (t > 0.80 ? 1.8 : 0);
+      ax += nx * strength;
+      ay += ny * strength;
+
+      // tout près => dash discret supplémentaire
+      if (dist < 70) dashAwayFromPointer(6);
+    }
+
+    state.vx = (state.vx + ax) * friction;
+    state.vy = (state.vy + ay) * friction;
+
+    const speed = Math.hypot(state.vx, state.vy);
+    if (speed > maxSpeed) {
+      const s = maxSpeed / speed;
+      state.vx *= s;
+      state.vy *= s;
+    }
+
+    state.x += state.vx;
+    state.y += state.vy;
+
+    // bounce doux contre les bords
+    const bounce = 0.9;
+    if (state.x < minX) { state.x = minX; state.vx = Math.abs(state.vx) * bounce; }
+    if (state.x > maxX) { state.x = maxX; state.vx = -Math.abs(state.vx) * bounce; }
+    if (state.y < minY) { state.y = minY; state.vy = Math.abs(state.vy) * bounce; }
+    if (state.y > maxY) { state.y = maxY; state.vy = -Math.abs(state.vy) * bounce; }
+
+    setNoPos(state.x, state.y);
+
+    // autorise l'overlap si ça bouge, mais évite de "s'arrêter" sur OUI
+    nudgeNoIfStuckOnYes();
+
+    state.raf = requestAnimationFrame(tick);
+  }
+
+  // ✅ Init: NO starts next to YES + tick
+  function init() {
+    // 2 rAF pour s'assurer que la mise en page est calculée
+    requestAnimationFrame(() => {
+      // Place NO au niveau du body pour éviter un conteneur "filtré"
+      if (noBtn.parentElement !== document.body) {
+        document.body.appendChild(noBtn);
+      }
+      placeNoNextToYes();
+      noBtn.style.opacity = "1";
+      requestAnimationFrame(tick);
+    });
+  }
+
+  // Si la mise en page bouge (resize), on replace NO près de YES
+  window.addEventListener("resize", () => {
+    if (state.armed) placeNoNextToYes();
+  });
+
+  window.addEventListener("load", () => {
+    if (state.armed) placeNoNextToYes();
+  });
+
+  init();
+
+  // ---------- Confetti ----------
+  function burstConfetti() {
+    const host = document.createElement("div");
+    host.className = "confetti";
+    document.body.appendChild(host);
+
+    const colors = ["#ff4d7d", "#ffd166", "#6ee7b7", "#60a5fa", "#f472b6"];
+    const pieces = 60;
+
+    for (let i = 0; i < pieces; i += 1) {
+      const piece = document.createElement("span");
+      piece.className = "confetti-piece";
+      const angle = (Math.PI * 2 * i) / pieces;
+      const radius = 80 + Math.random() * 90;
+      const tx = Math.cos(angle) * radius + (Math.random() * 40 - 20);
+      const ty = Math.sin(angle) * radius + 110 + Math.random() * 40;
+      const rot = (Math.random() * 360 - 180) + "deg";
+      piece.style.setProperty("--tx", tx + "px");
+      piece.style.setProperty("--ty", ty + "px");
+      piece.style.setProperty("--rot", rot);
+      piece.style.background = colors[i % colors.length];
+      piece.style.animationDelay = (Math.random() * 80) + "ms";
+      host.appendChild(piece);
+    }
+
+    setTimeout(() => host.remove(), 1100);
+  }
+</script>
+  </body>
+</html>
