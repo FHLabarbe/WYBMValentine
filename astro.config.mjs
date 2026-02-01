@@ -2,6 +2,6 @@
 import { defineConfig } from 'astro/config';
 
 export default defineConfig({
-  site: "https://FHLabarbe.github.io",
+  site: "https://fhlabarbe.github.io",
   base: "/WYBMValentine",
 });
